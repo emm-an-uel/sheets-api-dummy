@@ -109,6 +109,7 @@ class MainActivity : AppCompatActivity() {
                 val person = Person(name, age)
                 listOfPersons.add(person)
             }
+            adapter.notifyDataSetChanged()
         }
     }
 }
