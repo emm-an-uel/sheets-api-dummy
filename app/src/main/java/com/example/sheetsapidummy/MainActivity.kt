@@ -5,21 +5,17 @@ import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
-import com.google.api.client.auth.oauth2.Credential
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
-import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
-import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
+import com.google.api.client.googleapis.json.GoogleJsonError
+import com.google.api.client.googleapis.json.GoogleJsonResponseException
+import com.google.api.client.http.HttpRequestInitializer
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.JsonFactory
 import com.google.api.client.json.gson.GsonFactory
-import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.SheetsScopes
 import com.google.api.services.sheets.v4.model.ValueRange
-import java.io.File
-import java.io.InputStreamReader
+import com.google.auth.http.HttpCredentialsAdapter
+import com.google.auth.oauth2.GoogleCredentials
 import java.util.*
 
 
@@ -69,48 +65,38 @@ class MainActivity : AppCompatActivity() {
         val JSON_FACTORY: JsonFactory = GsonFactory.getDefaultInstance()
         val TOKENS_DIRECTORY_PATH: String = "tokens"
         val CREDENTIALS_FILE_PATH: String = "credentials.json"
-        val SCOPES: List<String> = Collections.singletonList(SheetsScopes.SPREADSHEETS_READONLY)
+        var numRows = 0
 
-        fun getTokenFolder(): File {
-            val tokenFolder = File(this.getExternalFilesDir("")?.absolutePath + TOKENS_DIRECTORY_PATH)
-            if (!tokenFolder.exists()) { // creates tokenFolder if it doesnt exist
-                tokenFolder.mkdir()
-            }
-            return tokenFolder
-        }
+        // load user credentials
+        val credentials: GoogleCredentials = GoogleCredentials.getApplicationDefault()
+            .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS))
+        val requestInitializer: HttpRequestInitializer = HttpCredentialsAdapter(credentials)
 
-        fun getCredentials(HTTP_TRANSPORT: NetHttpTransport): Credential {
-            // load client secrets
-            val `in` = this.assets.open(CREDENTIALS_FILE_PATH) // note that I saved the client secrets json file in the 'assets' folder of this project
-
-            val clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, InputStreamReader(`in`))
-
-            // build flow and trigger user authorization request
-            val flow: GoogleAuthorizationCodeFlow = GoogleAuthorizationCodeFlow.Builder(
-                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                .setDataStoreFactory(FileDataStoreFactory(getTokenFolder()))
-                .setAccessType("offline")
-                .build()
-
-            val receiver: LocalServerReceiver = LocalServerReceiver.Builder().setPort(8888).build()
-            return AuthorizationCodeInstalledApp(flow, receiver).authorize("user")
-        }
-
-        // build new authorized api client service
-        val HTTP_TRANSPORT: NetHttpTransport = GoogleNetHttpTransport.newTrustedTransport()
-        val service: Sheets = Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
+        // create sheets api client
+        val service: Sheets = Sheets.Builder(NetHttpTransport(),
+        GsonFactory.getDefaultInstance(),
+        requestInitializer)
             .setApplicationName(APPLICATION_NAME)
             .build()
-        val response: ValueRange = service.spreadsheets().values()
-            .get(spreadsheetId, range)
-            .execute()
-        val values: List<List<Any>> = response.getValues()
-        if (values.isEmpty()) {
+
+        var result: ValueRange? = null
+        try {
+            // gets values of cells in the specified range
+            result = service.spreadsheets().values().get(spreadsheetId, range).execute()
+            numRows = if (result.getValues() != null) result.getValues().size else 0
+        } catch (e: GoogleJsonResponseException) {
+            val error: GoogleJsonError = e.getDetails()
+            if (error.code == 404) {
+                Toast.makeText(this, "Spreadsheet not found with is $spreadsheetId", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        if (result == null) {
             Toast.makeText(this, "Sheets returned empty list", Toast.LENGTH_SHORT).show()
         } else {
-            for (row: List<Any> in values) {
-                val name = row[0] as String
-                val age = row[1] as Int
+            for (rowNum in 0 until numRows) {
+                val name: String = result.get("A$rowNum").toString()
+                val age: Int = result.get("B$rowNum") as Int
                 val person = Person(name, age)
                 listOfPersons.add(person)
             }
