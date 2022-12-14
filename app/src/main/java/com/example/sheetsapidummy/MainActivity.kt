@@ -18,8 +18,6 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.SheetsScopes
 import com.google.api.services.sheets.v4.model.ValueRange
-import java.io.FileNotFoundException
-import java.io.InputStream
 import java.io.InputStreamReader
 import java.util.*
 
@@ -69,16 +67,14 @@ class MainActivity : AppCompatActivity() {
         val APPLICATION_NAME: String = "Sheets API Dummy"
         val JSON_FACTORY: JsonFactory = GsonFactory.getDefaultInstance()
         val TOKENS_DIRECTORY_PATH: String = "tokens"
-        val CREDENTIALS_FILE_PATH: String = "/credentials.json"
+        val CREDENTIALS_FILE_PATH: String = "credentials.json"
         val SCOPES: List<String> = Collections.singletonList(SheetsScopes.SPREADSHEETS_READONLY)
 
         fun getCredentials(HTTP_TRANSPORT: NetHttpTransport): Credential {
             // load client secrets
-            val i: InputStream =
-                MainActivity::class.java.getResourceAsStream(CREDENTIALS_FILE_PATH)
-                    ?: throw FileNotFoundException("Resource not found: $CREDENTIALS_FILE_PATH")
+            val `in` = this.assets.open(CREDENTIALS_FILE_PATH) // note that I saved the client secrets json file in the 'assets' folder of this project
 
-            val clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, InputStreamReader(i))
+            val clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, InputStreamReader(`in`))
 
             // build flow and trigger user authorization request
             val flow: GoogleAuthorizationCodeFlow = GoogleAuthorizationCodeFlow.Builder(
