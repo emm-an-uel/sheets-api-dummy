@@ -18,6 +18,7 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.SheetsScopes
 import com.google.api.services.sheets.v4.model.ValueRange
+import java.io.File
 import java.io.InputStreamReader
 import java.util.*
 
@@ -70,6 +71,14 @@ class MainActivity : AppCompatActivity() {
         val CREDENTIALS_FILE_PATH: String = "credentials.json"
         val SCOPES: List<String> = Collections.singletonList(SheetsScopes.SPREADSHEETS_READONLY)
 
+        fun getTokenFolder(): File {
+            val tokenFolder = File(this.getExternalFilesDir("")?.absolutePath + TOKENS_DIRECTORY_PATH)
+            if (!tokenFolder.exists()) { // creates tokenFolder if it doesnt exist
+                tokenFolder.mkdir()
+            }
+            return tokenFolder
+        }
+
         fun getCredentials(HTTP_TRANSPORT: NetHttpTransport): Credential {
             // load client secrets
             val `in` = this.assets.open(CREDENTIALS_FILE_PATH) // note that I saved the client secrets json file in the 'assets' folder of this project
@@ -79,7 +88,7 @@ class MainActivity : AppCompatActivity() {
             // build flow and trigger user authorization request
             val flow: GoogleAuthorizationCodeFlow = GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                .setDataStoreFactory(FileDataStoreFactory(java.io.File(TOKENS_DIRECTORY_PATH)))
+                .setDataStoreFactory(FileDataStoreFactory(getTokenFolder()))
                 .setAccessType("offline")
                 .build()
 
