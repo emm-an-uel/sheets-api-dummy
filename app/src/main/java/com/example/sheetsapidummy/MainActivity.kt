@@ -65,9 +65,7 @@ class MainActivity : AppCompatActivity() {
         val JSON_FACTORY: JsonFactory = GsonFactory.getDefaultInstance()
         val TOKENS_DIRECTORY_PATH: String = "tokens"
         val CREDENTIALS_FILE_PATH: String = "credentials.json"
-        var numRows = 0
 
-        // load user credentials
         val credentials: GoogleCredentials = GoogleCredentials.getApplicationDefault()
             .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS))
         val requestInitializer: HttpRequestInitializer = HttpCredentialsAdapter(credentials)
@@ -83,20 +81,20 @@ class MainActivity : AppCompatActivity() {
         try {
             // gets values of cells in the specified range
             result = service.spreadsheets().values().get(spreadsheetId, range).execute()
-            numRows = if (result.getValues() != null) result.getValues().size else 0
         } catch (e: GoogleJsonResponseException) {
-            val error: GoogleJsonError = e.getDetails()
+            val error: GoogleJsonError = e.details
             if (error.code == 404) {
-                Toast.makeText(this, "Spreadsheet not found with is $spreadsheetId", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Spreadsheet not found with id: $spreadsheetId", Toast.LENGTH_SHORT).show()
             }
         }
 
         if (result == null) {
             Toast.makeText(this, "Sheets returned empty list", Toast.LENGTH_SHORT).show()
         } else {
-            for (rowNum in 0 until numRows) {
-                val name: String = result.get("A$rowNum").toString()
-                val age: Int = result.get("B$rowNum") as Int
+            val values: List<List<Any>> = result.getValues()
+            for (row: List<Any> in values) {
+                val name: String = row[0] as String
+                val age: Int = row[1] as Int
                 val person = Person(name, age)
                 listOfPersons.add(person)
             }
