@@ -16,6 +16,7 @@ import com.google.api.services.sheets.v4.SheetsScopes
 import com.google.api.services.sheets.v4.model.ValueRange
 import com.google.auth.http.HttpCredentialsAdapter
 import com.google.auth.oauth2.GoogleCredentials
+import java.io.InputStream
 import java.util.*
 
 
@@ -65,8 +66,11 @@ class MainActivity : AppCompatActivity() {
         val JSON_FACTORY: JsonFactory = GsonFactory.getDefaultInstance()
         val TOKENS_DIRECTORY_PATH: String = "tokens"
         val CREDENTIALS_FILE_PATH: String = "credentials.json"
+        val GOOGLE_APPLICATION_CREDENTIALS: String = "application_default_credentials.json"
 
-        val credentials: GoogleCredentials = GoogleCredentials.getApplicationDefault()
+        val stream: InputStream = resources.assets.open(GOOGLE_APPLICATION_CREDENTIALS)
+
+        val credentials: GoogleCredentials = GoogleCredentials.fromStream(stream)
             .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS))
         val requestInitializer: HttpRequestInitializer = HttpCredentialsAdapter(credentials)
 
